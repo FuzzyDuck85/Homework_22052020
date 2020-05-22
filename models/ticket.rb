@@ -11,17 +11,15 @@ class Ticket
     @film_id = options['film_id'].to_i
   end
 
+  # def Ticket.create(customer, film)
+  #   if customer.buy_ticket(film.price())
+  #     return Ticket.new({"customer_id" => customer.id(), "film_id" => film.id()})
+  #   end
+  # end
+
   def save()
     sql = "INSERT INTO tickets
-    (
-      customer_id,
-      film_id
-    )
-    VALUES
-    (
-      $1, $2
-    )
-    RETURNING id"
+    (customer_id, film_id) VALUES ($1, $2) RETURNING id"
     values = [@customer_id, @film_id]
     ticket = SqlRunner.run( sql,values ).first
     @id = ticket['id'].to_i
@@ -42,8 +40,6 @@ class Ticket
   def film()
     sql = "SELECT * FROM films WHERE id = $1"
     values = [@film_id]
-    # movie = SqlRunner.run(sql, values).first
-    # return Film.new(film)
     pg_result = SqlRunner.run(sql, values)
     film_hash = pg_result[0]
     film = Film.new(film_hash)
@@ -52,19 +48,23 @@ class Ticket
 
   def customer()
     sql = "SELECT * FROM customers WHERE id = $1"
-    # values = [@customer_id]
-    # customer = SqlRunner.run(sql, values).first
-    # return Customer.new(customer)
     pg_result = SqlRunner.run(sql, values)
     customer_hash = pg_result.first
     customer = Film.new(customer_hash)
     return customer
   end
 
-  # def total_fees
-  #   sql = "SELECT SUM(fee) FROM castings;"
-  #   pg_result = SqlRunner.run(sql, values)
-  #   fee_hash = pg_result.first
-  #   fee = Movie.new(fee_hash)
-  # end
+  def update()
+    sql = "UPDATE tickets SET (customer_id, film_id) = ($1, $2) WHERE id = $3"
+      values = [@customer_id, @film_id, @id]
+      SqlRunner.run(sql, values)
+  end
+
+  def Ticket.find_by_id(id)
+    sql = "SELECT * FROM tickets WHERE id = $1"
+    values = [id]
+    pg_result = SqlRunner.run(sql, values)
+    return Ticket.new(pg_result[0])
+  end
+
 end

@@ -11,27 +11,19 @@ class Film
     @price = options['price']
   end
 
+  # def Film.create(title, price)
+  #     return Film.new({"title" => title, "price" => price})
+  # end
+
   def save()
-    sql = "INSERT INTO films
-    (
-      title,
-      price
-    )
-    VALUES
-    (
-      $1, $2
-    )
-    RETURNING id"
+    sql = "INSERT INTO films (title, price) VALUES ($1, $2) RETURNING id"
     values = [@title, @price]
     film = SqlRunner.run( sql, values ).first
     @id = film['id'].to_i
   end
 
   def customers()
-    sql = "SELECT customers.*
-    FROM customers
-    INNER JOIN tickets ON customers.id = tickets.customer_id
-    WHERE tickets.film_id = $1"
+    sql = "SELECT customers.* FROM customers INNER JOIN tickets ON customers.id = tickets.customer_id WHERE tickets.film_id = $1"
     values = [@id]
     pg_result = SqlRunner.run(sql, values)
     customers = pg_result.map {|customer_hash| Customer.new(customer_hash)}
@@ -51,25 +43,17 @@ class Film
   end
 
   def update()
-    sql = "UPDATE films SET
-    (
-      title,
-      price
-      ) =
-      (
-        $1, $2
-      )
-      WHERE id = $3"
+    sql = "UPDATE films SET (title, price) = ($1, $2) WHERE id = $3"
       values = [@title, @price, @id]
       SqlRunner.run(sql, values)
   end
 
-  # def remaining_funds()
-  #   tickets = self.tickets()
-  #   casting_fees = casting.map{|casting| casting.fee}
-  #   combined_fees = casting_fees.sum
-  #   return @budget - combined_fees
-  # end
+  def Film.find_by_id(id)
+    sql = "SELECT * FROM films WHERE id = $1"
+    values = [id]
+    pg_result = SqlRunner.run(sql, values)
+    return Film.new(pg_result[0])
+  end
 
   def self.map_items(film_data)
       result = film_data.map{|film_hash| Film.new(film_hash)}

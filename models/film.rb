@@ -59,4 +59,11 @@ class Film
       result = film_data.map{|film_hash| Film.new(film_hash)}
       return result
   end
+
+  def tickets()
+    sql = "SELECT COUNT (tickets.id) FROM films INNER JOIN screenings ON films.id = screenings.film_id INNER JOIN tickets ON screenings.id = tickets.screening_id WHERE screenings.film_id = $1"
+    values = [@id]
+    pg_result = SqlRunner.run(sql, values)
+    return pg_result[0]["count"]
+  end
 end

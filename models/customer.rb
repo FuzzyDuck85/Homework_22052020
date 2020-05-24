@@ -54,6 +54,13 @@ class Customer
     return Customer.new(pg_result[0])
   end
 
+  def tickets()
+    sql = "SELECT COUNT (tickets.id) FROM customers INNER JOIN tickets ON customers.id = tickets.customer_id WHERE tickets.customer_id = $1"
+    values = [@id]
+    pg_result = SqlRunner.run(sql, values)
+    return pg_result[0]["count"]
+  end
+
   def buy_ticket(title)
     film = self.films(title)
     film_price = film.map{|film|film.price}

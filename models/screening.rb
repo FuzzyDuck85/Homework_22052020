@@ -1,72 +1,75 @@
-require_relative("../db/sql_runner")
+require_relative('../db/sql_runner')
 
 class Screening
 
   attr_reader :id
-  attr_accessor : :film_id, showing_time
+  attr_accessor :film_id, :start_time, :empty_seats
 
-  def initialize( options )
-    @id = options['id'].to_i if options['id']
+  def initialize(options)
+    @id = options['id'].to_i
     @film_id = options['film_id'].to_i
-    @showing_time = options['showing_time'].to_i
+    @start_time = options['start_time']
+    @empty_seats = options['empty_seats'].to_i
   end
 
   def save()
-    sql = "INSERT INTO screenings
-    (film_id, showing_time) VALUES ($1, $2) RETURNING id"
-    values = [@film_id, showing_time]
-    screening = SqlRunner.run( sql,values ).first
+    sql = "INSERT INTO screenings (film_id, start_time, empty_seats) VALUES ($1, $2, $3) RETURNING *"
+    values = [@film_id, @start_time, @empty_seats]
+    screening = SqlRunner.run(sql, values).first
     @id = screening['id'].to_i
+  end
+
+  def film()
+    sql = "SELECT * FROM films WHERE films.id = $1"
+    values = [@film_id]
+    film_data = SqlRunner.run(sql, values)
+    film = Film.map_item(film_data)
+    return film
+  end
+
+  def update()
+    sql = "UPDATE screenings SET (film_id, start_time, empty_seats) = ($1, $2, $3) WHERE id = $4"
+    values = [@film_id, @start_time, @empty_seats, @id]
+    SqlRunner.run(sql, values)
+  end
+
+  def sell_ticket()
+    @empty_seats -= 1
+    update()
   end
 
   def self.all()
     sql = "SELECT * FROM screenings"
-    screening = SqlRunner.run(sql)
-    result = screenings.map { |screening| Screening.new( screening ) }
-    return result
+    screening_data = SqlRunner.run(sql)
+    return Screening.map_items(screening_data)
   end
 
   def self.delete_all()
-    sql = "DELETE FROM tickets"
+    sql = "DELETE FROM screenings"
     SqlRunner.run(sql)
   end
 
-  def film()
-    sql = "SELECT * FROM films WHERE id = $1"
-    values = [@film_id]
-    pg_result = SqlRunner.run(sql, values)
-    film_hash = pg_result[0]
-    film = Film.new(film_hash)
-    return film
-  end
-
-  def customer()
-    sql = "SELECT * FROM customers WHERE id = $1"
-    pg_result = SqlRunner.run(sql, values)
-    customer_hash = pg_result.first
-    customer = Film.new(customer_hash)
-    return customer
-  end
-
-  def ticket()
-    sql = "SELECT * FROM tickets WHERE id = $1"
-    pg_result = SqlRunner.run(sql, values)
-    ticket_hash = pg_result.first
-    ticket = Customer.new(ticket_hash)
-    return ticket
-  end
-
-  def update()
-    sql = "UPDATE screenings SET (film_id, showing_time) = ($1, $2) WHERE id = $3"
-      values = [@film_id, @showing_time, @id]
-      SqlRunner.run(sql, values)
-  end
-
-  def Screening.find_by_id(id)
+  def self.find(id)
     sql = "SELECT * FROM screenings WHERE id = $1"
     values = [id]
-    pg_result = SqlRunner.run(sql, values)
-    return Screening.new(pg_result[0])
+    screening_data = SqlRunner.run(sql, values)
+    return Screening.map_item(screening_data)
+  end
+
+  def self.most_popular()
+    sql = "SELECT screening_id, COUNT(*) AS count FROM tickets GROUP BY screening_id ORDER BY count DESC LIMIT 1;"
+    most_popular_id = SqlRunner.run(sql).first["screening_id"].to_i
+    Screening.find(most_popular_id)
+  end
+  
+  def self.map_items(screening_data)
+    result = screening_data.map { |screening| Screening.new( screening ) }
+    return result
+  end
+
+  def self.map_item(screening_data)
+    result = Screening.map_items(screening_data)
+    return result.first
   end
 
 end
